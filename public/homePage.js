@@ -1,5 +1,7 @@
 "use strict"
 
+const { response } = require("express");
+
 const logoutButton = new LogoutButton();
 logoutButton.action = ApiConnector.logout(response => {
     if(logoutButton.success === true) {
@@ -15,7 +17,7 @@ ApiConnector.current(response => {
 });
 
 const ratesBoard = new RatesBoard();
-ApiConnector.getStocks(response => {
+const tableBoardFunc = ApiConnector.getStocks(response => {
     if(response.success) {
         console.log(response.data);
         ratesBoard.clearTable();
@@ -23,57 +25,79 @@ ApiConnector.getStocks(response => {
         }     
 });
 setInterval(() =>{
-    ApiConnector.getStocks(response => {
-        if(response.success) {
-            console.log(response.data);
-            ratesBoard.clearTable();
-            ratesBoard.fillTable(response.data);
-            }     
-    });
+    tableBoardFunc;
 }, 1000*60); 
 
-/* в чем ошибка не знаю, не идет что то... FvoritesWidget -тоже самое - запутался что должны возвращать функции
-и как правильно выводить setMessage
-const MonManager = new MoneyManager();
+const monManager = new MoneyManager();
 
-MonManager.addMoneyCallback = (data) => {ApiConnector.addMoney(data, response => {
-    if(response.success) {
-    ProfileWidget.showProfile(response.data);
-    }
-}); 
+monManager.addMoneyCallback = (money) => {ApiConnector.addMoney(money, (response) => {
+        if(response.success) {
+            console.log(response);
+            ProfileWidget.showProfile(response.data);
+        }
+     else {
+             monManager.setMessage(response, "ошибка");
+        }
+    }); 
 }
 
-MonManager.conversionMoneyCallback = (data) => {
-    ApiConnector.convertMoney(data, response => {
-    if(response.success) {
-    ProfileWidget.showProfile(response.data);
-    }
-}) 
+monManager.conversionMoneyCallback = (money) => {
+    ApiConnector.convertMoney(money, (response) => {
+        if(response.success) {
+            console.log(response);
+            ProfileWidget.showProfile(response.data);
+        }
+        else {
+            monManager.setMessage(response, "ошибка");
+        }
+    });
 } 
-*/
+monManager.sendMoneyCallback = (money) => ApiConnector.transferMoney(money, (response) => {
+    if(response.success) {
+        console.log(response);
+        ProfileWidget.showProfile(response.data);
+        monManager.setMessage(response, "Перевод совершен");
+    }
+    else {
+        monManager.setMessage(response, "ошибка");
+    }
+})
 
-const FvoritesWidget = new FavoritesWidget();
+const favoritesWidget = new FavoritesWidget();
+
 ApiConnector.getFavorites(response => {
     if(response.success) {
-        console.log(response.data);
-        FvoritesWidget.clearTable();
-        FvoritesWidget.fillTable(response.data);
-        FvoritesWidget.updateUsersList();
-        }     
+        favoritesWidget.clearTable();
+        favoritesWidget.fillTable(response.data);
+        monManager.updateUsersList(response.data);
+        favoritesWidget.setMessage(response, "cписок получен");
+    }     
 })
 
-FvoritesWidget.addUserCallback = ApiConnector.addUserToFavorites(response => {
-    if(response.success === true) {
-    FvoritesWidget.clearTable();
-    FvoritesWidget.fillTable(response.data);
-    FvoritesWidget.updateUsersList();
+favoritesWidget.addUserCallback = (favorite) => { ApiConnector.addUserToFavorites(favorite, (response) => {
+    if(response.success) {
+        favoritesWidget.clearTable();
+        favoritesWidget.fillTable(response.data);
+        monManager.updateUsersList(response.data);
+        favoritesWidget.setMessage(response, "пользователь добавлен");
+    }  
+    else {
+        monManager.setMessage(response, "ошибка");
     }
 })
+}
 
-FvoritesWidget.removeUserCallback = ApiConnector.removeUserFromFavorites(response => {
-    if(response.success === true) {
-    FvoritesWidget.clearTable();
-    FvoritesWidget.fillTable(response.data);
-    FvoritesWidget.updateUsersList();
-    }
-})     
+favoritesWidget.removeUserCallback = (remove) => {
+    ApiConnector.removeUserFromFavorites(remove, (response) => {
+        if(response.success) {
+            console.log(response.data);
+            favoritesWidget.clearTable();
+            favoritesWidget.fillTable(response.data);
+            monManager.updateUsersList(response.data);
+            favoritesWidget.setMessage(response, "пользователь удален");  
+        } 
+        else {
+            monManager.setMessage(response, "ошибка");
+        }
+    })
+}    
